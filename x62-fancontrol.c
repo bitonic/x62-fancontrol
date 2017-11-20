@@ -17,6 +17,9 @@ void die(char *msg, ...) {
   exit(1);
 }
 
+// fan control / temperature
+// --------------------------------------------------------------------
+
 void get_perm(unsigned long from, unsigned long num) {
   int err = ioperm(from, num, 1);
   if (err) {
@@ -67,26 +70,6 @@ void initialize_pci(void) {
   pci_cleanup(pacc);
 }
 
-void initialize(void) {
-  printf("Initializing\n");
-  // PCI
-  initialize_pci();
-  // get the permissions for io ports
-  get_perms();
-  // ports
-  printf("Send init IO ports commands\n");
-  outb(0x07, 0x4E);
-  outb(0x12, 0x4F);
-  outb(0x30, 0x4E);
-  outb(0x00, 0x4F);
-  outb(0x61, 0x4E);
-  outb(0x68, 0x4F);
-  outb(0x63, 0x4E);
-  outb(0x6C, 0x4F);
-  outb(0x30, 0x4E);
-  outb(0x01, 0x4F);
-}
-
 void wait_0x6C_second_bit_unset(void) {
   int counter = 0;
   int set = (inb(0x6C) & 2) == 2;
@@ -125,8 +108,7 @@ void unknown_communication(void) {
   outb(0x06, 0x68);
 }
 
-char read_temperature(void) {
-  printf("Reading temperature\n");
+unsigned char read_temperature(void) {
   set_0x6C(0x44);
   outb(0x00, 0x68);
   wait_0x6C_first_bit_set();
@@ -138,20 +120,115 @@ void set_fan_speed(unsigned char fan_speed) {
   outb(fan_speed, 0x68);
 }
 
-int main(int argc, char **argv) {
-  initialize();
+void initialize(void) {
+  printf("Initializing\n");
+  // PCI
+  initialize_pci();
+  // get the permissions for io ports
+  get_perms();
+  // ports
+  printf("Send init IO ports commands\n");
+  outb(0x07, 0x4E);
+  outb(0x12, 0x4F);
+  outb(0x30, 0x4E);
+  outb(0x00, 0x4F);
+  outb(0x61, 0x4E);
+  outb(0x68, 0x4F);
+  outb(0x63, 0x4E);
+  outb(0x6C, 0x4F);
+  outb(0x30, 0x4E);
+  outb(0x01, 0x4F);
+  // not sure what this does
   unknown_communication();
-  char temp = read_temperature();
-  printf("Current temperature: %d\n", temp);
-  if (argc > 1) {
-    long int fan_speed_l = strtol(argv[1], NULL, 10);
+}
+
+// daemon
+// --------------------------------------------------------------------
+
+// enter must be geq than leave
+struct temp_level {
+  unsigned char enter; // the temperature at which this level is entered
+  unsigned char leave; // the temperature at which this level is left
+  unsigned char fan_speed; // the fan speed for this level
+};
+
+struct temp_level default_levels[] = {
+  { 0,  0,  0  },
+  { 40, 30, 50 },
+  { 55, 45, 20 },
+  { 65, 55, 10 },
+  { 75, 65, 110 }
+};
+
+int num_default_levels = 5;
+
+void fan_manager(useconds_t poll_interval, int num_levels, struct temp_level levels[]) {
+  int level = 0;
+  while (1) {
+    unsigned char temp = read_temperature();
+    printf("Current temperature: %d\n", temp);
+    if (temp < levels[level].leave && level > 0) {
+      printf("  Leaving level %d since the temperature is below %d\n", level, levels[level].leave);
+      level--;
+      printf("  New fan speed: %d\n", levels[level].fan_speed);
+      set_fan_speed(levels[level].fan_speed);
+    } else if (level < num_levels-1 && temp > levels[level+1].enter) {
+      printf("  Leaving level %d since the temperature is above %d\n", level, levels[level+1].enter);
+      level++;
+      printf("  New fan speed: %d\n", levels[level].fan_speed);
+      set_fan_speed(levels[level].fan_speed);
+    } else {
+      if (level > 0) {
+        printf("  Lower bound: %d\n", levels[level].leave);
+      }
+      if (level < num_levels-1) {
+        printf("  Upper bound: %d\n", levels[level+1].enter);
+      }
+    }
+    usleep(poll_interval);
+  }
+}
+
+// main
+// --------------------------------------------------------------------
+
+void usage(void) {
+  fprintf(stderr,
+"x62-fancontrol temp\n"
+"\tDisplays the current temperature.\n"
+"\n"
+"x62-fancontrol set-fan-speed <fan-speed>\n"
+"\tSets the current fan speed. The EC will kick back in after\n"
+"\ta few seconds.\n"
+"\n"
+"x62-fancontrol manager\n"
+"\tManages the fan speed for you.\n");
+  exit(0);
+}
+
+int main(int argc, char **argv) {
+  if (argc == 2 && !strcmp(argv[1], "temp")) {
+    initialize();
+    unsigned char temp = read_temperature();
+    printf("Current temperature: %d\n", temp);
+  }
+  else if (argc == 3 && !strcmp(argv[1], "set-fan-speed")) {
+    initialize();
+    long int fan_speed_l = strtol(argv[2], NULL, 10);
     if (fan_speed_l < 0 || fan_speed_l > 255) {
-      die("Invalid fan speed %s", argv[1]);
+      die("Invalid fan speed %s", argv[2]);
     } else {
       unsigned char fan_speed = (unsigned char)fan_speed_l;
       printf("Setting fan speed to %d\n", fan_speed);
       set_fan_speed(fan_speed);
     }
   }
-  return 0;
+  else if (argc == 2 && !strcmp(argv[1], "manager")) {
+    initialize();
+    fan_manager(1 * 1000 * 1000, num_default_levels, default_levels);
+  }
+  else {
+    usage();
+  }
 }
+
