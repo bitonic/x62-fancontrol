@@ -171,12 +171,10 @@ void fan_manager(useconds_t poll_interval, int num_levels, struct temp_level lev
       printf("  Leaving level %d since the temperature is below %d\n", level, levels[level].leave);
       level--;
       printf("  New fan speed: %d\n", levels[level].fan_speed);
-      set_fan_speed(levels[level].fan_speed);
     } else if (level < num_levels-1 && temp > levels[level+1].enter) {
       printf("  Leaving level %d since the temperature is above %d\n", level, levels[level+1].enter);
       level++;
       printf("  New fan speed: %d\n", levels[level].fan_speed);
-      set_fan_speed(levels[level].fan_speed);
     } else {
       if (level > 0) {
         printf("  Lower bound: %d\n", levels[level].leave);
@@ -185,6 +183,9 @@ void fan_manager(useconds_t poll_interval, int num_levels, struct temp_level lev
         printf("  Upper bound: %d\n", levels[level+1].enter);
       }
     }
+    // we always set the level since sometimes the EC or something
+    // else seems to kick back in without our control
+    set_fan_speed(levels[level].fan_speed);
     usleep(poll_interval);
   }
 }
