@@ -1,12 +1,12 @@
-#include <sys/io.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
+#include <errno.h>
 #include <pci/pci.h>
 #include <stdarg.h>
-#include <errno.h>
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/io.h>
+#include <unistd.h>
 
 void die(char *msg, ...) {
   va_list args;
