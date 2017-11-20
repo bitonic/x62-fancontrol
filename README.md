@@ -16,3 +16,4 @@ $ sudo ./x62-fancontrol # will print usage
 
 I'm not sure yet what the fan speed numbers represent.
 
+See also discussion at <https://forum.thinkpads.com/viewtopic.php?f=80&t=125041>
