@@ -1,2 +1,2 @@
-x62-temp: x62-temp.c
-	gcc -Wall -Wextra -O x62-temp.c -o x62-temp -lpci
+x62-fancontrol: x62-fancontrol.c
+	gcc -Wall -Wextra -O x62-fancontrol.c -o x62-fancontrol -lpci
