@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 
 void die(char *msg, ...) {
   va_list args;
@@ -137,10 +138,20 @@ void set_fan_speed(unsigned char fan_speed) {
   outb(fan_speed, 0x68);
 }
 
-int main(void) {
+int main(int argc, char **argv) {
   initialize();
   unknown_communication();
   char temp = read_temperature();
   printf("Current temperature: %d\n", temp);
+  if (argc > 1) {
+    long int fan_speed_l = strtol(argv[1], NULL, 10);
+    if (fan_speed_l < 0 || fan_speed_l > 255) {
+      die("Invalid fan speed %s", argv[1]);
+    } else {
+      unsigned char fan_speed = (unsigned char)fan_speed_l;
+      printf("Setting fan speed to %d\n", fan_speed);
+      set_fan_speed(fan_speed);
+    }
+  }
   return 0;
 }
