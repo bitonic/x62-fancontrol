@@ -152,15 +152,16 @@ struct temp_level {
   unsigned char fan_speed; // the fan speed for this level
 };
 
+// It would be good to have a level with the fan speed of
+// 80 or so instead of 0, but on my laptop that speed produces a
+// pretty annoying noise.
 struct temp_level default_levels[] = {
-  { 0,  0,  0  },
-  { 40, 30, 50 },
-  { 55, 45, 20 },
-  { 65, 55, 10 },
-  { 75, 65, 110 }
+  { 40, 0, 0 },
+  { 55, 40, 20 },
+  { 70, 50, 2 },
+  { 85, 60, 110 }
 };
-
-int num_default_levels = 5;
+int num_default_levels = 4;
 
 void fan_manager(useconds_t poll_interval, int num_levels, struct temp_level levels[]) {
   int level = 0;
