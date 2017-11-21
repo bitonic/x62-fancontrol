@@ -8,6 +8,7 @@ import os
 import sys
 import subprocess
 import datetime
+import time
 
 x62_fancontrol = os.path.dirname(os.path.realpath(__file__)) + "/x62-fancontrol"
 
