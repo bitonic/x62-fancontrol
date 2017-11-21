@@ -8,13 +8,23 @@
 #include <sys/io.h>
 #include <unistd.h>
 
-void die(char *msg, ...) {
-  va_list args;
-  va_start(args, msg);
+void vdie_status(int status, char *msg, va_list args) {
   fprintf(stderr, "x62-fancontrol: ");
   vfprintf(stderr, msg, args);
   fputc('\n', stderr);
-  exit(1);
+  exit(status);
+}
+
+void die_status(int status, char *msg, ...) {
+  va_list args;
+  va_start(args, msg);
+  vdie_status(status, msg, args);
+}
+
+void die(char *msg, ...) {
+  va_list args;
+  va_start(args, msg);
+  vdie_status(1, msg, args);
 }
 
 // fan control / temperature
@@ -79,7 +89,7 @@ void wait_0x6C_second_bit_unset(void) {
     set = (inb(0x6C) & 2) == 2;
   }
   if (set) {
-    die("The second bit of 0x6C didn't reset!");
+    die_status(2, "The second bit of 0x6C didn't reset!");
   }
 }
 
@@ -92,7 +102,7 @@ void wait_0x6C_first_bit_set(void) {
     unset = !(inb(0x6C) & 1);
   }
   if (unset) {
-    die("The first bit of 0x6C didn't get set!");
+    die_status(2, "The first bit of 0x6C didn't get set!");
   }
 }
 
@@ -212,6 +222,10 @@ void fan_manager(useconds_t poll_interval, int num_levels, struct temp_level lev
 
 void usage(void) {
   fprintf(stderr,
+"In every command below we'll fail with error code 2 in\n"
+"the case of unexpected data from an IO port, which is\n"
+"useful since this seems to happen after a resume.\n"
+"\n"
 "x62-fancontrol temp\n"
 "\tDisplays the current temperature.\n"
 "\n"
