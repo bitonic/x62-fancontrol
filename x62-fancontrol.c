@@ -33,7 +33,7 @@ void die(char *msg, ...) {
 void get_perm(unsigned long from, unsigned long num) {
   int err = ioperm(from, num, 1);
   if (err) {
-    die("Could not set permission from 0x%x to 0x%x: %s", from, from+num, strerror(errno));
+    die("Could not set permission from 0x%x to 0x%x: %s", from, from+num-1, strerror(errno));
   }
 }
 
