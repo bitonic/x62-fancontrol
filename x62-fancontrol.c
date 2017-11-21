@@ -152,6 +152,21 @@ struct temp_level {
   unsigned char fan_speed; // the fan speed for this level
 };
 
+// The fan speed value influence the fan speed as follows:
+//
+// * 0: Off;
+// * 1-100: Lower number => higher speed. 1 is fastest and 100
+//   is slowest;
+// * 101-255: On at max speed. Note that the speed in this range
+//   is higher than the maximum speed in the 1-100 range (that is
+//   the speed at 1).
+//
+// The default table here is tuned to my 4th batch x62, 1210 BIOS.
+// The levels are overlapping to try to avoid too much switching between
+// them. A better solution would be to use a moving average rather
+// than the instant measurement, but I have not got around to doing
+// that yet.
+//
 // It would be good to have a level with the fan speed of
 // 80 or so instead of 0, but on my laptop that speed produces a
 // pretty annoying noise.
@@ -177,6 +192,7 @@ void fan_manager(useconds_t poll_interval, int num_levels, struct temp_level lev
       level++;
       printf("  New fan speed: %d\n", levels[level].fan_speed);
     } else {
+      printf("  Fan speed: %d\n", levels[level].fan_speed);
       if (level > 0) {
         printf("  Lower bound: %d\n", levels[level].leave);
       }
