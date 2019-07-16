@@ -159,18 +159,9 @@ void initialize(void) {
 struct temp_level {
   unsigned char enter; // the temperature at which this level is entered
   unsigned char leave; // the temperature at which this level is left
-  unsigned char fan_speed; // the fan speed for this level
+	char *fan_speed; // the fan speed for this level
 };
 
-// The fan speed value influence the fan speed as follows:
-//
-// * 0: Off;
-// * 1-100: Lower number => higher speed. 1 is fastest and 100
-//   is slowest;
-// * 101-255: On at max speed. Note that the speed in this range
-//   is higher than the maximum speed in the 1-100 range (that is
-//   the speed at 1).
-//
 // The default table here is tuned to my 4th batch x62, 1210 BIOS.
 // The levels are overlapping to try to avoid too much switching between
 // them. A better solution would be to use a moving average rather
@@ -181,10 +172,10 @@ struct temp_level {
 // 80 or so instead of 0, but on my laptop that speed produces a
 // pretty annoying noise.
 struct temp_level default_levels[] = {
-  { 40, 0, 0 },
-  { 55, 40, 20 },
-  { 70, 50, 2 },
-  { 85, 60, 110 }
+  { 40, 0, "0" },
+  { 55, 40, "30" },
+  { 70, 50, "70" },
+  { 85, 60, "100" }
 };
 int num_default_levels = 4;
 
@@ -196,13 +187,13 @@ void fan_manager(useconds_t poll_interval, int num_levels, struct temp_level lev
     if (temp < levels[level].leave && level > 0) {
       printf("  Leaving level %d since the temperature is below %d\n", level, levels[level].leave);
       level--;
-      printf("  New fan speed: %d\n", levels[level].fan_speed);
+      printf("  New fan speed: %s\n", levels[level].fan_speed);
     } else if (level < num_levels-1 && temp > levels[level+1].enter) {
       printf("  Leaving level %d since the temperature is above %d\n", level, levels[level+1].enter);
       level++;
-      printf("  New fan speed: %d\n", levels[level].fan_speed);
+      printf("  New fan speed: %s\n", levels[level].fan_speed);
     } else {
-      printf("  Fan speed: %d\n", levels[level].fan_speed);
+      printf("  Fan speed: %s\n", levels[level].fan_speed);
       if (level > 0) {
         printf("  Lower bound: %d\n", levels[level].leave);
       }
@@ -212,7 +203,13 @@ void fan_manager(useconds_t poll_interval, int num_levels, struct temp_level lev
     }
     // we always set the level since sometimes the EC or something
     // else seems to kick back in without our control
-    set_fan_speed(levels[level].fan_speed);
+		
+    // do a string to long int conversion so this behaves the same way
+    // as the set-fan-speed command, allowing 0-100 as ranges of fan speed
+    long int fan_speed_l = strtol(levels[level].fan_speed, NULL, 10);
+    unsigned char fan_speed = (unsigned char)fan_speed_l;
+    set_fan_speed(fan_speed);
+
     usleep(poll_interval);
   }
 }
